@@ -4,6 +4,7 @@
 # from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QFileDialog, QVBoxLayout, QWidget
 # from PyQt5.QtGui import QPixmap, QImage
 # import matplotlib.pyplot as plt
+#new changes
 
 # from objRemove import ObjectRemove
 # from models.deepFill import Generator
