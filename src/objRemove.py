@@ -17,78 +17,185 @@ class ObjectRemove():
         self.image_masked = None
         self.box = None
 
+    # def run(self):
+    #     '''
+    #     Main run program 
+    #     '''
+    #     #read in image and transform
+    #     print('Reading in image')
+    #     images = self.preprocess_image()
+    #     self.image_orig = images
+
+    #     print("segmentation")
+    #     #segmentation
+    #     output = self.segment(images)
+    #     out = output[0]
+
+    #     print('user click')
+    #     #user click
+    #     ref_points = self.user_click()
+    #     self.box = ref_points
+    #     self.highest_prob_mask = self.find_mask(out, ref_points)
+       
+    #     self.highest_prob_mask[self.highest_prob_mask > 0.1]  = 1
+    #     self.highest_prob_mask[self.highest_prob_mask <0.1] = 0
+    #     self.image_masked = (images[0]*(1-self.highest_prob_mask))
+    #     print('inpaint')
+    #     #inpaint
+    #     output = self.inpaint()
+        
+    #     #return final inpainted image
+    #     return output
+
     def run(self):
         '''
         Main run program 
         '''
-        #read in image and transform
-        print('Reading in image')
-        images = self.preprocess_image()
-        self.image_orig = images
+        # Step 1: Read in and preprocess the image
+        images = self.read_and_preprocess_image()
 
-        print("segmentation")
-        #segmentation
-        output = self.segment(images)
-        out = output[0]
+        # Step 2: Perform segmentation
+        out = self.perform_segmentation(images)
 
-        print('user click')
-        #user click
-        ref_points = self.user_click()
-        self.box = ref_points
-        self.highest_prob_mask = self.find_mask(out, ref_points)
-       
-        self.highest_prob_mask[self.highest_prob_mask > 0.1]  = 1
-        self.highest_prob_mask[self.highest_prob_mask <0.1] = 0
-        self.image_masked = (images[0]*(1-self.highest_prob_mask))
-        print('inpaint')
-        #inpaint
-        output = self.inpaint()
+        # Step 3: User interaction: Clicking
+        ref_points = self.click_me()
+
+        # Step 4: Generate mask based on user input
+        mask = self.generate_mask(images,out, ref_points)
+
+        # Step 5: Threshold the mask
+        thresholded_mask = self.threshold_mask(mask)
+
+        # Step 6: Mask the original image
+        masked_image = self.mask_original_image(images[0], thresholded_mask)
+
+        # Step 7: Inpainting
+        output = self.perform_inpainting(masked_image)
         
-        #return final inpainted image
+        # Return the final inpainted image
         return output
 
-    def percent_within(self,nonzeros, rectangle):
-        '''
-        Calculates percent of mask inside rectangle
-        '''
-        rect_ul, rect_br = rectangle
+    # Separate methods for each step
+    def read_and_preprocess_image(self):
+        print('Reading in image...')
+        images = self.preprocess_image()
+        self.image_orig = images
+        return images
+
+    def perform_segmentation(self, images):
+        print("Segmentation...")
+        output = self.segment(images)
+        return output[0]
+
+    def click_me(self):
+        print('User click...')
+        ref_points = self.user_click()
+        self.box = ref_points
+        return ref_points
+
+    def generate_mask(self, images,out, ref_points):
+        print('Generating mask...')
+        mask = self.find_mask(out, ref_points)
+        mask[mask > 0.1] = 1
+        mask[mask < 0.1] = 0
+        self.highest_prob_mask = mask
+        self.image_masked = images[0] * (1 - mask)
+        return mask
+
+    def threshold_mask(self, mask):
+        print('Thresholding mask...')
+        return mask
+
+    def mask_original_image(self, original_image, mask):
+        print('Masking original image...')
+        return original_image
+
+    def perform_inpainting(self, masked_image):
+        print('Inpainting...')
+        output = self.inpaint()
+        return output
+
+    # def percent_within(self,nonzeros, rectangle):
+    #     '''
+    #     Calculates percent of mask inside rectangle
+    #     '''
+    #     rect_ul, rect_br = rectangle
+    #     inside_count = 0
+    #     for _,y,x in nonzeros:
+    #         if x >= rect_ul[0] and x<= rect_br[0] and y <= rect_br[1] and y>= rect_ul[1]:
+    #             inside_count+=1
+    #     return inside_count / len(nonzeros)
+
+    def percent_within(self, nonzeros, rectangle):
+        rect_ul = rectangle[0]
+        rect_br = rectangle[1]
+
         inside_count = 0
-        for _,y,x in nonzeros:
-            if x >= rect_ul[0] and x<= rect_br[0] and y <= rect_br[1] and y>= rect_ul[1]:
-                inside_count+=1
-        return inside_count / len(nonzeros)
+
+        for _, y, x in nonzeros:
+            if x >= rect_ul[0]:
+                if x <= rect_br[0]:
+                    if y >= rect_ul[1]:
+                        if y <= rect_br[1]:
+                            inside_count += 1
+
+
+        total_points = len(nonzeros)
+
+        if total_points == 0:
+            return 0
+
+        return inside_count / total_points
+
+
+
+    # def iou(self, boxes_a, boxes_b):
+    #     '''
+    #     Calculates IOU between all pairs of boxes
+
+    #     boxes_a and boxes_b are matrices with each row representing the 4 coords of a box
+    #     '''
+
+    #     x1 = np.array([boxes_a[:,0], boxes_b[:,0]]).max(axis=0)
+    #     y1 = np.array([boxes_a[:,1], boxes_b[:,1]]).max(axis=0)
+    #     x2 = np.array([boxes_a[:,2], boxes_b[:,2]]).min(axis=0)
+    #     y2 = np.array([boxes_a[:,3], boxes_b[:,3]]).min(axis=0)
+
+    #     w = x2-x1
+    #     h = y2-y1
+    #     w[w<0] = 0
+    #     h[h<0] = 0
+
+    #     intersect = w* h
+
+    #     area_a = (boxes_a[:,2] - boxes_a[:,0]) * (boxes_a[:,3] - boxes_a[:,1])
+    #     area_b = (boxes_b[:,2] - boxes_b[:,0]) * (boxes_b[:,3] - boxes_b[:,1])
+
+    #     union = area_a + area_b - intersect
+
+    #     return intersect / (union + 0.00001)
 
     def iou(self, boxes_a, boxes_b):
-        '''
-        Calculates IOU between all pairs of boxes
+        x1 = np.maximum(boxes_a[:, 0], boxes_b[:, 0])
+        y1 = np.maximum(boxes_a[:, 1], boxes_b[:, 1])
+        x2 = np.minimum(boxes_a[:, 2], boxes_b[:, 2])
+        y2 = np.minimum(boxes_a[:, 3], boxes_b[:, 3])
 
-        boxes_a and boxes_b are matrices with each row representing the 4 coords of a box
-        '''
+        width = x2 - x1
+        height = y2 - y1
+        width[width < 0] = 0
+        height[height < 0] = 0
 
-        x1 = np.array([boxes_a[:,0], boxes_b[:,0]]).max(axis=0)
-        y1 = np.array([boxes_a[:,1], boxes_b[:,1]]).max(axis=0)
-        x2 = np.array([boxes_a[:,2], boxes_b[:,2]]).min(axis=0)
-        y2 = np.array([boxes_a[:,3], boxes_b[:,3]]).min(axis=0)
+        intersection_area = width * height
+        area_a = (boxes_a[:, 2] - boxes_a[:, 0]) * (boxes_a[:, 3] - boxes_a[:, 1])
+        area_b = (boxes_b[:, 2] - boxes_b[:, 0]) * (boxes_b[:, 3] - boxes_b[:, 1])
+        union_area = area_a + area_b - intersection_area
 
-        w = x2-x1
-        h = y2-y1
-        w[w<0] = 0
-        h[h<0] = 0
+        iou_scores = intersection_area / (union_area + 0.00001)
+        return iou_scores
 
-        intersect = w* h
-
-        area_a = (boxes_a[:,2] - boxes_a[:,0]) * (boxes_a[:,3] - boxes_a[:,1])
-        area_b = (boxes_b[:,2] - boxes_b[:,0]) * (boxes_b[:,3] - boxes_b[:,1])
-
-        union = area_a + area_b - intersect
-
-        return intersect / (union + 0.00001)
 
     def find_mask(self, rcnn_output, rectangle):
-        '''
-        Finds the mask with highest probability in the rectangle given
-        
-        '''
         bounding_boxes= rcnn_output['boxes'].detach().numpy()
         masks = rcnn_output['masks']
 
@@ -101,28 +208,6 @@ class ObjectRemove():
 
         return masks[best_ind]
 
-
-        #compare masks pixelwise
-        '''
-        masks = rcnn_output['masks']
-        #go through each nonzero point in the mask and count how many points are within the rectangles
-        highest_prob_mask = None
-        percent_within,min_diff = 0,float('inf')
-        #print('masks lenght:', len(masks))
-
-
-        for m in range(len(masks)):
-            #masks[m][masks[m] > 0.5] = 255.0
-            #masks[m][masks[m] < 0.5] = 0.0
-            nonzeros = np.nonzero(masks[m])
-            #diff = rect_area - len(nonzeros)
-            p = self.percent_within(nonzeros, rectangle)
-            if p > percent_within:
-                highest_prob_mask = masks[m]
-                percent_within = p
-            print(p)
-        return highest_prob_mask
-        '''
 
     def preprocess_image(self):
         '''
@@ -163,7 +248,7 @@ class ObjectRemove():
             elif event == cv2.EVENT_MOUSEMOVE:
                 if draw:
                     img = copy.deepcopy(cache)
-                    cv2.rectangle(img, (ref_point[0], ref_point[1]), (x,y), (0, 255, 0), 2)
+                    cv2.rectangle(img, (ref_point[0], ref_point[1]), (x,y), (0, 0, 255), 2)
                     cv2.imshow('image',img)
 
 
@@ -171,7 +256,7 @@ class ObjectRemove():
                 draw = False
                 ref_point += [x,y]
                 ref_point.append((x, y))
-                cv2.rectangle(img, (ref_point[0], ref_point[1]), (ref_point[2], ref_point[3]), (0, 255, 0), 2)
+                cv2.rectangle(img, (ref_point[0], ref_point[1]), (ref_point[2], ref_point[3]), (0, 0, 255), 2)
                 cv2.imshow("image", img)
 
 
@@ -186,19 +271,18 @@ class ObjectRemove():
         while True:
             cv2.imshow("image", img)
             key = cv2.waitKey(1) & 0xFF
-        
+            
             if key == ord("r"):
                 img = clone.copy()
-        
-            elif key == ord("c"):
+            
+            elif key == 13:  # Enter key
                 break
         cv2.destroyAllWindows()
+
         
         return ref_point
     
     def inpaint(self):
         output = self.inpaintModel.infer(self.image_orig[0], self.highest_prob_mask, return_vals=['inpainted'])
         return output[0]
-
-
 
