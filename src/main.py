@@ -7,9 +7,9 @@ from objRemove import ObjectRemove
 from models.deepFill import Generator
 from torchvision.models.detection import maskrcnn_resnet50_fpn, MaskRCNN_ResNet50_FPN_Weights
 
-##################################
+#################################
 #get image path from command line#
-##################################
+#################################
 # parser = argparse.ArgumentParser()
 # parser.add_argument("image")
 # args = parser.parse_args()
