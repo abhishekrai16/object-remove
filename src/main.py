@@ -14,7 +14,7 @@ from torchvision.models.detection import maskrcnn_resnet50_fpn, MaskRCNN_ResNet5
 # parser.add_argument("image")
 # args = parser.parse_args()
 # image_path = args.image
-#i have made changes
+
 import tkinter as tk
 from tkinter import filedialog
 
